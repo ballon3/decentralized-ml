@@ -28,7 +28,7 @@ data = {
 }
 
 r = requests.post(
-    'http://127.0.0.1:3000/txs',
+    'http://127.0.0.1:3001/txs',
     headers=headers,
     data=json.dumps(data),
 )
