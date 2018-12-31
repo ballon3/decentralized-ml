@@ -58,6 +58,13 @@ class DatasetManager():
         self._mappings = None
         self._validate_data()
         self._port = config.getint("BLOCKCHAIN", "http_port")
+<<<<<<< Updated upstream
+=======
+        self._ipfs_client = None
+        self._db_client = None
+        self._frac = config['DATASET_MANAGER']['sample_fraction']
+        self.label = config['DATASET_MANAGER']['category']
+>>>>>>> Stashed changes
 
     def configure(self, ipfs_client):
         """
@@ -156,8 +163,32 @@ class DatasetManager():
         """
         Keys for datasets can only be at most 30 characters long.
         """
+<<<<<<< Updated upstream
         if len(key) > 30:
             raise InvalidKeyError(key)
+=======
+        ed_directory = {}
+        mappings = self._mappings
+        filepath = os.path.join(self._raw_filepath, 'datasets.yaml')
+        reverse_mappings = {v: k for k, v in mappings.items()}
+
+        for folder in os.listdir(self._raw_filepath):
+            folder_path = os.path.join(os.path.abspath(self._raw_filepath), folder)
+            if not os.path.isdir(folder_path): continue
+            encoding = reverse_mappings[folder]
+            files = list(os.listdir(folder_path))
+            assert len(files) == 1, \
+                "We only support one file per dataset folder!"
+            file_name = files[0]
+            if not file_name.endswith(".csv"): continue
+            filepath = os.path.join(folder_path, file_name)
+            dataset = pd.read_csv(filepath)
+            sample = dataset.sample(frac=self._frac)
+            metadata = dataset.describe()
+            ed_directory[encoding] = (sample.to_json(), metadata.to_json())
+        
+        return ed_directory
+>>>>>>> Stashed changes
 
     def post_dataset_with_md(self, name):
         """
@@ -166,6 +197,7 @@ class DatasetManager():
 
         IMPORTANT: NOT FINISHED DEBUGGING, DO NOT USE
         """
+<<<<<<< Updated upstream
         filepath = self._raw_filepath
         self.check_key_length(name)
         value = {}
@@ -218,3 +250,24 @@ class DatasetManager():
             folder_dict['md'] = md.to_json()
             value[folder] = folder_dict
         receipt = setter(client=self._client, key=name, value=value, port=self._port)
+=======
+        assert len(key) <= 30, \
+            "Keys for datasets can only be at most 30 characters long."
+        assert self._db_client, \
+            "DB client has not been set. Dataset Manager needs to be configured!"
+        assert self._ipfs_client, \
+            "IPFS client has not been set. Dataset Manager needs to be configured!"
+        
+        ed_directory = self._generate_ed_directory()
+
+        self._db_client.add_labels([key], [self.label])
+
+        receipt = setter(
+                    client=self._ipfs_client, 
+                    key=key, 
+                    value=ed_directory, 
+                    port=self._port
+                )
+        return receipt
+
+>>>>>>> Stashed changes
