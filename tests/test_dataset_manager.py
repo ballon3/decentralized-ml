@@ -167,7 +167,6 @@ def test_ed_directory_format(good_dataset_manager):
 
 '''
 uncomment when node is running
-
 def test_bad_metadata_post():
     try:
         rfp = os.path.join(currentdir, 'artifacts/dataset_manager_test_data')
@@ -176,5 +175,4 @@ def test_bad_metadata_post():
         assert False
     except NoMetadataFoundError:
         pass
-
 '''
