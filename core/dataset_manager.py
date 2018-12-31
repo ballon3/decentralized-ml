@@ -22,55 +22,49 @@ logging.basicConfig(level=logging.INFO,
 class DatasetManager():
     """
     Dataset Manager
-
     This class takes in an filepath to raw data upon initialization.
     Some functionalities include:
-
         1. Validating data.
         2. TODO: Detecting changes in data 
         3. TODO: Validating data after changes, validating only new data?
-
     Each instance corresponds to a set of raw data. The directory should look 
     something like this:
-
     main/
         dataset1/
             dataset1.csv
         dataset2/
             dataset2.csv
-
     The Dataset Manager will be initialized in the Bootstrapper. 
     """
 
     def __init__(self, config_manager):
         """
         Take in an filepath to the raw data.
-
         For now, throw an exception if a valid dataset path is not provided.
-
         TODO: In the event of a invalid dataset path, log a useful message 
         for the user and don't terminate the service
+        TODO: Config Manager asks provider to label the data, but we need
+        to eventually build a classifier that does this automatically. 
         """
         config = config_manager.get_config()
         raw_filepath = config['GENERAL']['dataset_path']
-        assert os.path.isdir(raw_filepath), "The dataset filepath provided is not valid."
+        assert os.path.isdir(raw_filepath), \
+            "The dataset filepath provided is not valid."
         self._raw_filepath = raw_filepath
         self._mappings = None
         self._validate_data()
         self._port = config.getint("BLOCKCHAIN", "http_port")
-<<<<<<< Updated upstream
-=======
         self._ipfs_client = None
         self._db_client = None
-        self._frac = config['DATASET_MANAGER']['sample_fraction']
-        self.label = config['DATASET_MANAGER']['category']
->>>>>>> Stashed changes
+        self.classification = config['DATASET_MANAGER']['category']
 
-    def configure(self, ipfs_client):
+    def configure(self, ipfs_client, db_client):
         """
         Sets up IPFS client for _communicate.
+        Sets up DB Client for pushing labels to DB.
         """
-        self._client = ipfs_client
+        self._ipfs_client = ipfs_client
+        self._db_client = db_client
     
     def _validate_data(self):
         """
@@ -125,7 +119,6 @@ class DatasetManager():
         """
         Check if datasets.yaml exists. If so, load it into the class (if it
         hasn't been already). Otherwise, call _create_dataset_mappings
-
         Returns True if mappings had to be created, and False otherwise 
         (used for testing).
         """
@@ -143,12 +136,10 @@ class DatasetManager():
         """
         mapping_filepath is the filepath where datasets.yaml is created, which
         is <raw_filepath>/datasets.yaml.
-
         For each dataset folder in the raw_filepath, generate a random string
         using uuid and add a (key, value) pair to a dictionary such that the 
         random string is key and the dataset folder name is the value. Store
         the dictionary in _mappings and in a yaml file at mapping_filepath.
-
         Ultimately, we are assigning identifiers for each dataset.
         """
         mappings = {}
@@ -159,14 +150,18 @@ class DatasetManager():
         with open(mapping_filepath, "w") as f:
             f.write(yaml.dump(mappings))
 
-    def check_key_length(self, key):
+    def _generate_ed_directory(self):
         """
-        Keys for datasets can only be at most 30 characters long.
+        This is a helper method that encompasses the logic for creating the
+        ED Directory. Given the directory example in the class docstring, 
+        an example of an ED Directory can look like this:
+        {
+            ...
+            <dataset1_uuid> : (<dataset1 sample json>, <dataset1 metadata json>),
+            <dataset2_uuid> : (<dataset2 sample json>, <dataset2 metadata json>)
+            ...
+        }
         """
-<<<<<<< Updated upstream
-        if len(key) > 30:
-            raise InvalidKeyError(key)
-=======
         ed_directory = {}
         mappings = self._mappings
         filepath = os.path.join(self._raw_filepath, 'datasets.yaml')
@@ -183,74 +178,21 @@ class DatasetManager():
             if not file_name.endswith(".csv"): continue
             filepath = os.path.join(folder_path, file_name)
             dataset = pd.read_csv(filepath)
-            sample = dataset.sample(frac=self._frac)
+            sample = dataset.sample(frac=0.1)
             metadata = dataset.describe()
             ed_directory[encoding] = (sample.to_json(), metadata.to_json())
         
         return ed_directory
->>>>>>> Stashed changes
 
-    def post_dataset_with_md(self, name):
+    def post_directories_and_category_labels(self, key):
         """
-        Post samples of datasets on blockchain along with provided metadata
-        under the provided name as the key
-
-        IMPORTANT: NOT FINISHED DEBUGGING, DO NOT USE
+        Post the ED Directory on blockchain with the given key.
+        The ED Directory is a JSON dictionary whose keys represent the dataset
+        folders in the directory and whose values represent the corresponding
+        datasets. Assume only one dataset file per folder. 
+        See _generate_ed_directory docstring for an example of what an ED
+        Directory looks like.
         """
-<<<<<<< Updated upstream
-        filepath = self._raw_filepath
-        self.check_key_length(name)
-        value = {}
-        folders = []
-        for file in os.listdir(filepath):
-            if os.path.isdir(os.path.join(os.path.abspath(filepath), file)):
-                folders.append(file)
-        for folder in folders:
-            folder_dict = {}
-            folder_path = os.path.join(os.path.abspath(filepath), folder)
-            files = os.listdir(folder_path)
-            for file in files:
-                if file[:2] == 'md':
-                    file_path = os.path.join(folder_path, file)
-                    metadata = pd.read_csv(file_path)
-                    folder_dict['md'] = metadata.to_json()
-                else:
-                    file_path = os.path.join(folder_path, file)
-                    dataset = pd.read_csv(file_path)
-                    sample = dataset.sample(frac=0.1)
-                    folder_dict['ds'] = sample.to_json()
-            if 'md' not in folder_dict:
-                raise NoMetadataFoundError(folder)
-            value[folder] = folder_dict
-        receipt = setter(client=self._client, key=name, value=value, port=self._port)
-
-    def post_dataset(self, name):
-        """
-        Post samples of datasets on blockchain with automatically generated
-        metadata under provided name as the key
-
-        IMPORTANT: NOT FINISHED DEBUGGING, DO NOT USE
-        """
-        filepath = self._raw_filepath
-        self.check_key_length(name)
-        value = {}
-        folders = []
-        for file in os.listdir(filepath):
-            if os.path.isdir(os.path.join(os.path.abspath(filepath), file)):
-                folders.append(file)
-        for folder in folders:
-            folder_dict = {}
-            folder_path = os.path.join(os.path.abspath(filepath), folder)
-            file = list(os.listdir(folder_path))[0]
-            file_path = os.path.join(folder_path, file)
-            dataset = pd.read_csv(file_path)
-            md = pd.DataFrame(dataset.describe())
-            sample = dataset.sample(frac=0.1)
-            folder_dict['ds'] = sample.to_json()
-            folder_dict['md'] = md.to_json()
-            value[folder] = folder_dict
-        receipt = setter(client=self._client, key=name, value=value, port=self._port)
-=======
         assert len(key) <= 30, \
             "Keys for datasets can only be at most 30 characters long."
         assert self._db_client, \
@@ -260,7 +202,7 @@ class DatasetManager():
         
         ed_directory = self._generate_ed_directory()
 
-        self._db_client.add_labels([key], [self.label])
+        self._db_client.add_classifications([key], [self.classification])
 
         receipt = setter(
                     client=self._ipfs_client, 
@@ -269,5 +211,3 @@ class DatasetManager():
                     port=self._port
                 )
         return receipt
-
->>>>>>> Stashed changes
