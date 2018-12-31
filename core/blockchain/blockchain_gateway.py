@@ -27,16 +27,19 @@ class BlockchainGateway(object):
 
     def __init__(self):
         """
-        Initialize state to an empty list. Everything else is left to configure().
+        Initialize state, keys to empty lists. Everything else is left to configure().
         """
         self.state = []
         self.event = Event()
+        self.keys = []
 
-    def configure(self, config_manager: object, communication_manager: object, ipfs_client: object):
+    def configure(self, config_manager: object, communication_manager: object, 
+                    ipfs_client: object, dataset_manager: object):
         """
         Add communication_manager, ipfs_client, and set port.
         """
         self.communication_manager = communication_manager
+        self._dataset_manager = dataset_manager
         config = config_manager.get_config()
         self._host = config.get("BLOCKCHAIN", "host")
         self._port = config.getint("BLOCKCHAIN", "http_port")
@@ -130,7 +133,7 @@ class BlockchainGateway(object):
         """
         Only allows new-session transactions through.
         """
-        return tx.get(TxEnum.KEY.name) == tx.get(TxEnum.CONTENT.name)
+        return self._dataset_manager.validate_key(tx.get(TxEnum.KEY.name)["dataset_uuid"])
     
     def _filter_new_session_info(self, tx: dict) -> bool:
         """

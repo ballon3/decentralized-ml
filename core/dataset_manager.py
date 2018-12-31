@@ -68,6 +68,12 @@ class DatasetManager():
         self._ipfs_client = ipfs_client
         self._db_client = db_client
     
+    def validate_key(self, key):
+        """
+        Check whether this dataset_manager is responsible for the given key (uuid)
+        """
+        return key in self._mappings.keys()
+
     def _validate_data(self):
         """
         Validate all raw data. As of now, checks that:
