@@ -23,11 +23,13 @@ def ipfs_client(config_manager):
     return ipfsapi.connect(config.get('BLOCKCHAIN', 'host'), 
                             config.getint('BLOCKCHAIN', 'ipfs_port'))
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def communication_manager():		
     class MockCommunicationManager:
         def __init__(self):
-            self.dummy_msg_type = None
+            self.dummy_msg_type = "None"
+            self.data_provider_info = "None"
+            self.job_info = "None"
         def inform(self, dummy1, payload):
             self.dummy_msg_type = dummy1
             self._create_session(payload)
@@ -44,18 +46,22 @@ def communication_manager():
             self.job.uuid = self.data_provider_info.get("dataset_uuid")
             self.job.label_column_name = self.data_provider_info.get("label_column_name")
             assert self.job.uuid, "uuid of job not set!"
+        def reset(self):
+            self.dummy_msg_type = "None"
+            self.data_provider_info = "None"
+            self.job_info = "None"
     return MockCommunicationManager()
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def dataset_manager():
     class MockDatasetManager:
         def __init__(self):
-            pass
+            self.mappings = [1234]
         def validate_key(self, key):
-            return True
+            return key in self.mappings
     return MockDatasetManager()
 
-@pytest.fixture	
+@pytest.fixture	(scope='session')
 def blockchain_gateway(config_manager, communication_manager, ipfs_client, dataset_manager):	
     blockchain_gateway = BlockchainGateway()
     blockchain_gateway.configure(config_manager, communication_manager, ipfs_client, dataset_manager)
@@ -88,10 +94,42 @@ def test_blockchain_gateway_can_listen_decentralized_learning(blockchain_gateway
     # at this point we should listen for decentralized learning
     # hear it (filter_new_session() == True)
     # and update our communication manager
-    assert communication_manager.dummy_msg_type == RawEventTypes.NEW_MESSAGE.name, "Wrong msg_type"
-    assert communication_manager.data_provider_info == {"dataset_uuid": 1234, "label_column_name": "label"}
+    assert communication_manager.dummy_msg_type == RawEventTypes.NEW_MESSAGE.name, \
+        "Wrong msg_type"
+    assert communication_manager.data_provider_info == {
+        "dataset_uuid": 1234, "label_column_name": "label"
+    }
+    communication_manager.reset()
     # assert communication_manager.dummy2[TxEnum.CONTENT.name] == {"model": "hello world"}, "Wrong dummy2"
 
+def test_blockchain_gateway_filters_sessions(blockchain_gateway, communication_manager):
+    """
+    Ensures that the gatewawy won't intercept messages not intended for it
+    """
+    serialized_job = serialize_job(make_initialize_job(make_model_json()))
+    new_session_event = {
+        "optimizer_params": "",
+        "serialized_job": serialized_job
+    }
+    tx_receipt = setter(
+        blockchain_gateway._client, 
+        {"dataset_uuid": 5678, "label_column_name": "label"},
+        blockchain_gateway._port, 
+        new_session_event, 
+        True
+    )
+    assert tx_receipt
+    blockchain_gateway._listen(blockchain_gateway._handle_new_session_creation,
+        blockchain_gateway._filter_new_session)
+    # at this point we should listen for decentralized learning
+    # not hear it (filter_new_session() == False)
+    # and therefore not update our communication manager
+    assert communication_manager.dummy_msg_type == "None", \
+        "Shouldn't have heard anything but heard a message with uuid {}".format(communication_manager.job.uuid)
+    assert communication_manager.data_provider_info == "None", \
+        "Shouldn't have heard anything!"
+    assert communication_manager.job_info == "None", \
+        "Shouldn't have heard anything!"
 # TODO: This will be implemented once we figure out how.	
 # def test_handle_decentralized_learning(blockchain_gateway):	
 #     """To be implemented."""
