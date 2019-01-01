@@ -41,13 +41,17 @@ class FederatedAveragingOptimizer(object):
 		"""
 		Initializes the optimizer.
 
-		Expects the `initialization_payload` dict to contain two entries:
+		Expects the `initialization_payload` dict to contain two dicts:
 
-			- `serialized_job`: the serialized DML Job
+			- data-provider specific information, incl. dataset_uuid etc.
 
-			- `optimizer_params`: the optimizer parameters (dict) needed to
-			initialize this optimizer (should contain the max_rounds and
-			num_averages_per_round)
+			- job specific information
+
+				- `serialized_job`: the serialized DML Job
+
+				- `optimizer_params`: the optimizer parameters (dict) needed to
+				initialize this optimizer (should contain the max_rounds and
+				num_averages_per_round)
 		
 		num_averages_per_round(int): how many weights this optimizer needs to incorporate
 		into its weighted running average before it's "heard enough" 
@@ -55,13 +59,16 @@ class FederatedAveragingOptimizer(object):
 		max_rounds(int): how many rounds of fed learning this optimizer wants to do
 		"""
 		logging.info("Setting up Optimizer...{}".format(initialization_payload))
-		serialized_job = initialization_payload.get('serialized_job')
+		data_provider_info = initialization_payload.get(TxEnum.KEY.name)
+		job_info = initialization_payload.get(TxEnum.CONTENT.name)
+		serialized_job = job_info.get('serialized_job')
 		self.job = deserialize_job(serialized_job)
-		mappings = dataset_manager.get_mappings()
+		self.job.uuid = data_provider_info.get("dataset_uuid")
+		self.job.label_column_name = data_provider_info.get("label_column_name")
 		assert self.job.uuid, "uuid of job not set!"
-		assert self.job.uuid in mappings, "uuid not found in mappings"
-		self.job.raw_filepath = mappings[self.job.uuid]
-		optimizer_params = initialization_payload.get('optimizer_params')
+		assert dataset_manager.validate_key(self.job.uuid), "uuid not found in mappings"
+		self.job.raw_filepath = dataset_manager.mappings[self.job.uuid]
+		optimizer_params = job_info.get('optimizer_params')
 
 		self.curr_averages_this_round = 0
 		self.job.sigma_omega = 0

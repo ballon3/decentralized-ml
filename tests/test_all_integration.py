@@ -71,7 +71,7 @@ def setup_client(config_manager, client):
     dataset_manager = DatasetManager(config_manager)
     dataset_manager.bootstrap()
     communication_manager.configure(scheduler, dataset_manager)
-    blockchain_gateway.configure(config_manager, communication_manager, client)
+    blockchain_gateway.configure(config_manager, communication_manager, client, dataset_manager)
     scheduler.configure(communication_manager, client)
     return communication_manager, blockchain_gateway, scheduler
 
