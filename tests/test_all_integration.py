@@ -28,6 +28,14 @@ def config_manager():
     return config_manager
 
 @pytest.fixture(scope='session')
+def config_manager_two():
+    config_manager = ConfigurationManager()
+    config_manager.bootstrap(
+        config_filepath='tests/artifacts/integration/configuration2.ini'
+    )
+    return config_manager
+
+@pytest.fixture(scope='session')
 def ipfs_client(config_manager):
     config = config_manager.get_config()
     return ipfsapi.connect(config.get('BLOCKCHAIN', 'host'), 
@@ -36,6 +44,10 @@ def ipfs_client(config_manager):
 @pytest.fixture(scope='session')
 def mnist_uuid():
     return 'd16c6e86-d103-4e71-8741-ee1f888d206c'
+
+@pytest.fixture(scope='session')
+def mnist_uuid_two():
+    return '0fcf9cbb-39df-4ad6-9042-a64c87fecfb3'
 
 @pytest.fixture(scope='session')
 def transformed_filepath():
@@ -51,12 +63,13 @@ def cleanup(transformed_filepath):
 
 @pytest.fixture(scope='session')
 def new_session_event(mnist_uuid):
-    serialized_job = make_initialize_job(make_model_json())
+    serialized_job = serialize_job(make_initialize_job(make_model_json()))
     new_session_event = {
         # TxEnum.KEY.name: None,
         # TxEnum.CONTENT.name: {
             "optimizer_params": {"num_averages_per_round": 2, "max_rounds": 2},
-            "serialized_job": serialized_job
+            "serialized_job": serialized_job,
+            "participants": ['0fcf9cbb-39df-4ad6-9042-a64c87fecfb3', 'd16c6e86-d103-4e71-8741-ee1f888d206c']
         # }
     }
     return new_session_event
@@ -64,6 +77,10 @@ def new_session_event(mnist_uuid):
 @pytest.fixture(scope='session')
 def new_session_key(mnist_uuid):
     return {"dataset_uuid": mnist_uuid, "label_column_name": "label"}
+
+@pytest.fixture(scope='session')
+def new_session_key_two(mnist_uuid_two):
+    return {"dataset_uuid": mnist_uuid_two, "label_column_name": "label"}
 
 def setup_client(config_manager, client):
     """
@@ -79,44 +96,54 @@ def setup_client(config_manager, client):
     scheduler.configure(communication_manager, client)
     return communication_manager, blockchain_gateway, scheduler
 
-# def test_federated_learning_two_clients_automated(new_session_event, config_manager, ipfs_client):
-#     """
-#     Tests fully automated federated learning.
-#     """
-#     # Set up first client
-#     communication_manager, blockchain_gateway, scheduler = setup_client(config_manager, ipfs_client)
-#     # Set up second client
-#     communication_manager_2, blockchain_gateway_2, scheduler_2 = setup_client(config_manager, ipfs_client)
-#     # (0) Someone sends decentralized learning event to the chain
-#     tx_receipt = setter(
-#         client=blockchain_gateway._client,
-#         key=None, 
-#         port=blockchain_gateway._port,
-#         value=new_session_event, 
-#         flag=True
-#     )
-#     assert tx_receipt
-#     scheduler.start_cron(period_in_mins=0.01)
-#     scheduler_2.start_cron(period_in_mins=0.01)
-#     blockchain_gateway.start_cron(period_in_mins=0.01)
-#     blockchain_gateway_2.start_cron(period_in_mins=0.01)
-#     timeout = 40 + time.time()
-#     while time.time() < timeout and (len(scheduler.processed) != 10 or len(scheduler_2.processed) != 10):
-#         time.sleep(5)
-#     scheduler.stop_cron()
-#     scheduler_2.stop_cron()
-#     blockchain_gateway.stop_cron()
-#     blockchain_gateway_2.stop_cron()
-#     assert len(scheduler.processed) == 10, \
-#         "Jobs {} failed/not completed in time!".format([
-#         result.job.job_type for result in scheduler.processed])  
-#     assert len(scheduler_2.processed) == 10, \
-#         "Jobs {} failed/not completed in time!".format([
-#         result.job.job_type for result in scheduler_2.processed])    
-#     assert communication_manager.optimizer is None
-#     assert communication_manager_2.optimizer is None
+def test_federated_learning_two_clients_automated(
+    new_session_event, new_session_key, new_session_key_two, config_manager, config_manager_two, ipfs_client):
+    """
+    Tests fully automated federated learning.
+    """
+    # Set up first client
+    communication_manager, blockchain_gateway, scheduler = setup_client(config_manager, ipfs_client)
+    # Set up second client
+    communication_manager_2, blockchain_gateway_2, scheduler_2 = setup_client(config_manager_two, ipfs_client)
+    # (0) Someone sends decentralized learning event to the chain
+    tx_receipt = setter(
+        client=blockchain_gateway._client,
+        key=new_session_key, 
+        port=blockchain_gateway._port,
+        value=new_session_event, 
+        flag=True
+    )
+    tx_receipt_two = setter(
+        client=blockchain_gateway._client,
+        key=new_session_key_two, 
+        port=blockchain_gateway._port,
+        value=new_session_event, 
+        flag=True
+    )
+    assert tx_receipt
+    assert tx_receipt_two
+    scheduler.start_cron(period_in_mins=0.01)
+    scheduler_2.start_cron(period_in_mins=0.01)
+    blockchain_gateway.start_cron(period_in_mins=0.01)
+    blockchain_gateway_2.start_cron(period_in_mins=0.01)
+    timeout = 40 + time.time()
+    while time.time() < timeout and (len(scheduler.processed) != 10 or len(scheduler_2.processed) != 10):
+        time.sleep(5)
+    scheduler.stop_cron()
+    scheduler_2.stop_cron()
+    blockchain_gateway.stop_cron()
+    blockchain_gateway_2.stop_cron()
+    assert len(scheduler.processed) == 10, \
+        "Jobs {} failed/not completed in time!".format([
+        result.job.job_type for result in scheduler.processed])  
+    assert len(scheduler_2.processed) == 10, \
+        "Jobs {} failed/not completed in time!".format([
+        result.job.job_type for result in scheduler_2.processed])
+    assert communication_manager.optimizer is None
+    assert communication_manager_2.optimizer is None
 
-# def test_federated_learning_two_clients_manual(new_session_event, config_manager, ipfs_client):
+# Uncomment below after fixing the problems w IPFS daemon
+# def test_federated_learning_two_clients_manual(new_session_event, new_session_key, new_session_key_two, config_manager_two, config_manager, ipfs_client):
 #     """
 #     Integration test that checks that one round of federated learning can be
 #     COMPLETED with max_rounds = 2, num_averages_per_round = 2
@@ -127,10 +154,22 @@ def setup_client(config_manager, client):
 #     # Set up first client
 #     communication_manager, blockchain_gateway, scheduler = setup_client(config_manager, ipfs_client)
 #     # Set up second client
-#     communication_manager_2, blockchain_gateway_2, scheduler_2 = setup_client(config_manager, ipfs_client)
-#     # set up new session
+#     communication_manager_2, blockchain_gateway_2, scheduler_2 = setup_client(config_manager_two, ipfs_client)
 #     # (0) Someone sends decentralized learning event to the chain
-#     tx_receipt = setter(blockchain_gateway._client, None, blockchain_gateway._port, new_session_event, True)
+#     tx_receipt = setter(
+#         client=blockchain_gateway._client,
+#         key=new_session_key, 
+#         port=blockchain_gateway._port,
+#         value=new_session_event, 
+#         flag=True
+#     )
+#     tx_receipt = setter(
+#         client=blockchain_gateway._client,
+#         key=new_session_key_two, 
+#         port=blockchain_gateway._port,
+#         value=new_session_event, 
+#         flag=True
+#     )
 #     assert tx_receipt
 #     # (1) Gateway_1 listens for the event
 #     blockchain_gateway._listen(blockchain_gateway._handle_new_session_creation, 
@@ -193,7 +232,7 @@ def setup_client(config_manager, client):
 #     assert communication_manager_2.optimizer is None, "Should have terminated!"
 #     # and that completes one local round of federated learning!
 
-def test_communication_manager_integration(new_session_event, config_manager, ipfs_client):
+def test_communication_manager_integration(new_session_event, new_session_key, config_manager, ipfs_client):
     """
     Integration test that checks that the Communication Manager can initialize,
     train, (and soon communicate) a model, and average a model.
@@ -237,9 +276,13 @@ def test_communication_manager_integration(new_session_event, config_manager, ip
     """
     communication_manager, blockchain_gateway, scheduler = setup_client(
         config_manager, ipfs_client)
+    nested_dict = {
+        TxEnum.KEY.name: new_session_key,
+        TxEnum.CONTENT.name: new_session_event
+    }
     args = {
         TxEnum.KEY.name: MessageEventTypes.NEW_SESSION.name,
-        TxEnum.CONTENT.name: new_session_event
+        TxEnum.CONTENT.name: nested_dict
     }
     communication_manager.inform(
         RawEventTypes.NEW_MESSAGE.name,
@@ -319,4 +362,5 @@ def test_communication_manager_integration(new_session_event, config_manager, ip
     # now we should be ready to train
     assert communication_manager.optimizer.job.job_type == JobTypes.JOB_TRAIN.name, \
         "Should be ready to train!"
+    scheduler.reset()
     # and that completes one local round of federated learning!

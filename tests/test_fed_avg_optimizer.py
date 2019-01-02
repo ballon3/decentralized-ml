@@ -43,10 +43,16 @@ def dataset_manager(config_manager):
 
 @pytest.fixture(scope='session')
 def initialization_payload(small_uuid):
-    return {
-        "optimizer_params": {"listen_bound": 2, "listen_iterations": 0},
-        "serialized_job": make_serialized_job_with_uuid(small_uuid)
+    serialized_job = serialize_job(make_initialize_job(make_model_json()))
+    new_session_event = {
+        TxEnum.KEY.name: {"dataset_uuid": small_uuid, "label_column_name": "label"},
+        TxEnum.CONTENT.name: {
+            "optimizer_params": {"num_averages_per_round": 2, "max_rounds": 2},
+            "serialized_job": serialized_job,
+            "participants": ['0fcf9cbb-39df-4ad6-9042-a64c87fecfb3', 'd16c6e86-d103-4e71-8741-ee1f888d206c']
+        }
     }
+    return new_session_event
 
 @pytest.fixture(scope='session')
 def transformed_filepath():

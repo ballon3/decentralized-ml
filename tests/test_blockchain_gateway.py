@@ -78,7 +78,7 @@ def test_blockchain_gateway_can_listen_decentralized_learning(blockchain_gateway
     """
     serialized_job = serialize_job(make_initialize_job(make_model_json()))
     new_session_event = {
-        "optimizer_params": "",
+        "optimizer_params": "this cannot be empty",
         "serialized_job": serialized_job
     }
     tx_receipt = setter(

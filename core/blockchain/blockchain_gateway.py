@@ -137,8 +137,11 @@ class BlockchainGateway(object):
         """
         Only allows new-session transactions through.
         """
-        key_dict = ipfs_to_content(self._client, tx.get(TxEnum.KEY.name))
-        return self._dataset_manager.validate_key(key_dict["dataset_uuid"])
+        try:
+            key_dict = ipfs_to_content(self._client, tx.get(TxEnum.KEY.name))
+            return self._dataset_manager.validate_key(key_dict["dataset_uuid"])
+        except:
+            return False
     
     def _filter_new_session_info(self, tx: dict) -> bool:
         """

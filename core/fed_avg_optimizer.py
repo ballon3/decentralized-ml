@@ -67,7 +67,7 @@ class FederatedAveragingOptimizer(object):
 		self.job.label_column_name = data_provider_info.get("label_column_name")
 		assert self.job.uuid, "uuid of job not set!"
 		assert dataset_manager.validate_key(self.job.uuid), "uuid not found in mappings"
-		self.job.raw_filepath = dataset_manager.mappings[self.job.uuid]
+		self.job.raw_filepath = dataset_manager.get_mappings()[self.job.uuid]
 		optimizer_params = job_info.get('optimizer_params')
 		self.curr_averages_this_round = 0
 		self.job.sigma_omega = 0
@@ -75,11 +75,11 @@ class FederatedAveragingOptimizer(object):
 		self.curr_round = 0
 		self.max_rounds = optimizer_params.get('max_rounds')
 		self.initialization_complete = False
-		# Set other participants so that the optimizer knows which other nodes it's expected
-		# to hear messages from for future session_info messages
+		# Set other participants so that the optimizer knows which other nodes 
+		# it's expected to hear messages from for future session_info messages
 		participants = job_info.get('participants')
-		self.other_participants = [participant['dataset_uuid'] for participant in participants
-									if participant['dataset_uuid'] != self.job.uuid]
+		self.other_participants = [participant for participant in participants
+									if participant != self.job.uuid]
 		self.LEVEL1_CALLBACKS = {
 			RawEventTypes.JOB_DONE.name: self._handle_job_done,
 			RawEventTypes.NEW_MESSAGE.name: self._handle_new_info,

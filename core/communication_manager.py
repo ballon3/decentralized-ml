@@ -95,12 +95,11 @@ class CommunicationManager(object):
         # only considering the 'FederatedAveragingOptimizer' for now.
         # TODO: We need to incorporate session id's when we're ready.
         if not self.dataset_manager:
-            raise Exception("Dataset Manager has not been set. Communication \
-                Manager needs to be configured first!")
+            raise Exception("Dataset Manager has not been set. Communication Manager needs to be configured first!")
         assert payload.get(TxEnum.KEY.name) is MessageEventTypes.NEW_SESSION.name, \
             "Expected a new session but got {}".format(payload.get(TxEnum.KEY.name))
         initialization_payload = payload.get(TxEnum.CONTENT.name)
-        logging.info("New optimizer session is being set up...{}".format(initialization_payload))
+        # logging.info("New optimizer session is being set up...{}".format(initialization_payload))
         self.optimizer = FederatedAveragingOptimizer(
                             initialization_payload,
                             self.dataset_manager
