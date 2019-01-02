@@ -69,11 +69,11 @@ class DatasetManager():
         self._db_client = db_client
     
     def validate_key(self, key):
-        """
-        Check whether this dataset_manager is responsible for the given key (uuid)
-        """
-        return key in self._mappings.keys()
-
+         """
+         Check whether this dataset_manager is responsible for the given key (uuid)
+         """
+         return key in self._mappings.keys()
+    
     def _validate_data(self):
         """
         Validate all raw data. As of now, checks that:
@@ -186,7 +186,7 @@ class DatasetManager():
             if not file_name.endswith(".csv"): continue
             filepath = os.path.join(folder_path, file_name)
             dataset = pd.read_csv(filepath)
-            sample = dataset.sample(frac=self._frac)
+            sample = dataset.sample(frac=0.1)
             metadata = dataset.describe()
             ed_directory[encoding] = (sample.to_json(), metadata.to_json())
         
