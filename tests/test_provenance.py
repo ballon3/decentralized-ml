@@ -24,7 +24,7 @@ def ipfs_client(good_config_manager):
 def good_config_manager():
     config_manager = ConfigurationManager()
     config_manager.bootstrap(
-        config_filepath='tests/artifacts/dataset_manager/configuration.ini'
+        config_filepath='tests/artifacts/provenance/configuration.ini'
     )
     return config_manager
 
