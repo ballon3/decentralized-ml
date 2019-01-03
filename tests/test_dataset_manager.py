@@ -13,10 +13,6 @@ from core.blockchain.blockchain_utils import getter, setter
 from core.configuration import ConfigurationManager
 from core.dataset_manager import DatasetManager
 
-TEST_NONEXISTENT_KEY = 'nonexistence'
-TEST_SINGLE_KEY = 'singleton'
-TEST_MULTIPLE_KEY = 'multiplicity'
-TEST_VALUE = 'World!'
 
 @pytest.fixture(scope='session')
 def ipfs_client(good_config_manager):
