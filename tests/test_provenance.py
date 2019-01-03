@@ -64,4 +64,4 @@ def test_post_ed(good_dataset_manager, db_client):
     good_dataset_manager.bootstrap()
     receipt = good_dataset_manager.post_directories_and_category_labels(key)
     assert receipt
-    reset(db_client, [key])
+    # reset(db_client, [key])
