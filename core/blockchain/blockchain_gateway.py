@@ -71,6 +71,14 @@ class BlockchainGateway(object):
         self.state = []
         logging.info("Gateway reset!")
     
+    def state_append(self, set_element):
+        """
+        Called by other Setter methods used in the rest of the service.
+        Making sure that the service doesn't pick up weights that were
+        already generated.
+        """
+        logging.info("appending to state: {}".format(set_element))
+        self.state.append(set_element)
     # Private methods to manage listening
 
     def _update_local_state(self, global_state_wrapper: dict) -> None:

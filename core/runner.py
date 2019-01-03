@@ -58,11 +58,12 @@ class DMLRunner(object):
             JobTypes.JOB_COMM.name: self._communicate,
         }
     
-    def configure(self, ipfs_client):
+    def configure(self, ipfs_client, blockchain_gateway):
         """
-        Sets up IPFS client for _communicate.
+        Sets up IPFS client and blockchain_client for _communicate
         """
         self._client = ipfs_client
+        self._blockchain_gateway = blockchain_gateway
 
     def run_job(self, job):
         """
@@ -265,6 +266,7 @@ class DMLRunner(object):
             key = job.key,
             port = self._port,
             value = serialize_job(job),
+            blockchain_gateway=self._blockchain_gateway
         )
         results = DMLResult(
             status='successful',

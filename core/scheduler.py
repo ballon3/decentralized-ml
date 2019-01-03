@@ -48,13 +48,13 @@ class DMLScheduler(object):
 		self.current_results = [None for _ in range(self.num_runners)]
 		logging.info("Scheduler is set up!")
 
-	def configure(self, communication_manager, ipfs_client):
+	def configure(self, communication_manager, ipfs_client, blockchain_gateway):
 		"""
 		Configures the scheduler with the Communication Manager so that it can
 		inform it of the jobs it schedules after they run successfully.
 		"""
 		self.communication_manager = communication_manager
-		[runner.configure(ipfs_client) for runner in self.runners]
+		[runner.configure(ipfs_client=ipfs_client,  blockchain_gateway=blockchain_gateway) for runner in self.runners]
 
 	def add_job(self, dml_job):
 		"""

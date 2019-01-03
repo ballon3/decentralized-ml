@@ -51,7 +51,13 @@ def test_blockchain_gateway_can_listen_decentralized_learning(blockchain_gateway
     # NOTE: Should be updated after Averaging/Communication PRs are merged
     """
 
-    tx_receipt = setter(blockchain_gateway._client, None, blockchain_gateway._port, {"model": "hello world"}, True)
+    tx_receipt = setter(
+        client=blockchain_gateway._client,
+        key=None,
+        port=blockchain_gateway._port,
+        value={"model": "hello world"},
+        flag=True
+    )
     assert tx_receipt
     blockchain_gateway._listen(blockchain_gateway._handle_new_session_creation,
         blockchain_gateway._filter_new_session)
